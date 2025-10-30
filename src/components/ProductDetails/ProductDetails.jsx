@@ -1,13 +1,22 @@
-import React, { use, useRef } from 'react';
+import React, { use, useEffect, useRef, useState } from 'react';
 import { useLoaderData } from 'react-router';
 import { AuthContext } from '../../contexts/AuthContext';
+import Swal from 'sweetalert2';
 
 const ProductDetails = () => {
-    const {_id: productId} = useLoaderData();
+    const { _id: productId } = useLoaderData();
+    const [bids, setBids] = useState([])
     const bidModalRef = useRef(null);
     const { user } = use(AuthContext);
 
-    
+    useEffect(() => {
+        fetch(`http://localhost:3000/products/bids/${productId}`)
+            .then(res => res.json())
+            .then(data => {
+                console.log('bids for this product', data)
+                setBids(data);
+            })
+    }, [productId])
 
     const handleBidModalOpen = () => {
         bidModalRef.current.showModal();
@@ -18,11 +27,11 @@ const ProductDetails = () => {
         const name = e.target.name.value;
         const email = e.target.email.value;
         const bid = e.target.bid.value;
-        
+
         console.log(productId, name, email, bid)
 
         const newBid = {
-            product: productId, 
+            product: productId,
             buyer_name: name,
             buyer_email: email,
             bid_price: bid,
@@ -36,11 +45,20 @@ const ProductDetails = () => {
             },
             body: JSON.stringify(newBid)
         })
-        .then(res => res.json())
-        .then(data =>{
-            console.log('after placing bid', data)
-        })
-        
+            .then(res => res.json())
+            .then(data => {
+                if (data.insertedId) {
+                    bidModalRef.current.close();
+                    Swal.fire({
+                        position: "top-end",
+                        icon: "success",
+                        title: "Your bid has been placed.",
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                }
+            })
+
     }
 
     return (
@@ -64,10 +82,10 @@ const ProductDetails = () => {
                                     <label className="label">Name</label>
                                     <input type="text" name='name' className="input"
                                         readOnly
-                                        defaultValue={user.displayName} />
+                                        defaultValue={user?.displayName} />
                                     {/* email */}
                                     <label className="label">Email</label>
-                                    <input type="email" className="input" name='email' readOnly defaultValue={user.email} />
+                                    <input type="email" className="input" name='email' readOnly defaultValue={user?.email} />
                                     {/* bid amount */}
                                     <label className="label">Bid</label>
                                     <input type="text" name='bid' className="input"
@@ -80,7 +98,7 @@ const ProductDetails = () => {
                             <div className="modal-action">
                                 <form method="dialog">
                                     {/* if there is a button in form, it will close the modal */}
-                                    <button className="btn">Close</button>
+                                    <button className="btn">Cancel</button>
                                 </form>
                             </div>
                         </div>
@@ -88,6 +106,9 @@ const ProductDetails = () => {
                 </div>
             </div>
             {/* bids for this product */}
+            <div>
+                <h3 className="text-3xl">Bids for this Product: <span className='text-primary'>{bids.length}</span></h3>
+            </div>
         </div>
     );
 };
